@@ -1,0 +1,135 @@
+- name: CUDA Download Check
+  action: command [ -e cuda-repo-ubuntu1404_7.0-28_amd64.deb ]
+  register: result
+  ignore_errors: True
+
+- name: Download CUDA Deb
+  shell: wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_7.0-28_amd64.deb
+  sudo: no
+  when: result|failed
+
+- name: Set CUDA Repository
+  apt: deb=./cuda-repo-ubuntu1404_7.0-28_amd64.deb
+  sudo: true
+
+- name: Aptitude Update
+  apt: update_cache=yes
+
+- name: Aptitude Install Cuda(takes long)
+  apt: pkg=cuda
+
+- name: Aptitude Install Dependencies(build-essential)
+  apt: pkg=build-essential
+
+- name: Aptitude Install Dependencies(libatlas-base-dev)
+  apt: pkg=libatlas-base-dev
+
+- name: Aptitude Install Dependencies(libprotobuf-dev)
+  apt: pkg=libprotobuf-dev
+
+- name: Aptitude Install Dependencies(libleveldb-dev)
+  apt: pkg=libleveldb-dev
+
+- name: Aptitude Install Dependencies(libsnappy-dev)
+  apt: pkg=libsnappy-dev
+
+- name: Aptitude Install Dependencies(libopencv-dev)
+  apt: pkg=libopencv-dev
+
+- name: Aptitude Install Dependencies(libboost-all-dev)
+  apt: pkg=libboost-all-dev
+
+- name: Aptitude Install Dependencies(libhdf5-serial-dev)
+  apt: pkg=libhdf5-serial-dev
+
+- name: Aptitude Install Dependencies(libgflags-dev)
+  apt: pkg=libgflags-dev
+
+- name: Aptitude Install Dependencies(libgoogle-glog-dev)
+  apt: pkg=libgoogle-glog-dev
+
+- name: Aptitude Install Dependencies(liblmdb-dev)
+  apt: pkg=liblmdb-dev
+
+- name: Aptitude Install Dependencies(protobuf-compiler)
+  apt: pkg=protobuf-compiler
+
+- name: Aptitude Install Dependencies(g++-4.6)
+  apt: pkg=g++-4.6
+
+- name: Aptitude Install Dependencies(git)
+  apt: pkg=git
+
+- name: Clone Caffe
+  git: repo=https://github.com/BVLC/caffe.git dest=~/caffe
+  sudo: no
+
+- name: copy Makefile.config
+  shell: creates=~/caffe/Makefile.config cp ~/caffe/Makefile.config.example ~/caffe/Makefile.config
+  sudo: no
+
+- name: Edit Makefile.config-1
+  lineinfile: >-
+    dest='~/caffe/Makefile.config'
+    state=present
+    backrefs=yes
+    regexp='# CPU_ONLY := 1$'
+    line='CPU_ONLY := 1'
+  sudo: no
+
+- name: Edit Makefile.config-2
+  replace: >-
+    dest='~/caffe/Makefile.config'
+    regexp='^# CUSTOM_CXX := g\+\+$'
+    replace='CUSTOM_CXX := g++-4.6'
+  sudo: no
+
+- name: Aptitude Install Dependencies(python-pip)
+  apt: pkg=python-pip
+
+- name: Aptitude Install Dependencies(gfortran)
+  apt: pkg=gfortran
+
+- name: Aptitude Install Dependencies(python-dev)
+  apt: pkg=python-dev
+
+- name: Aptitude Install Dependencies(python-numpy)
+  apt: pkg=python-numpy
+
+- name: Aptitude Install Dependencies(python-skimage)
+  apt: pkg=python-skimage
+
+- name: Aptitude Install Dependencies(python-pip)
+  pip: name=numpy
+
+- name: Install pip modules for Caffe
+  shell: sudo pip install -r /home/{{ansible_ssh_user}}/caffe/python/requirements.txt
+
+- name: Build Caffe
+  sudo: no
+  shell: make all
+  args:
+    chdir: /home/{{ansible_ssh_user}}/caffe/
+
+- name: Test Caffe
+  sudo: no
+  shell: make test
+  args:
+    chdir: /home/{{ansible_ssh_user}}/caffe/
+
+- name: runtest Caffe
+  sudo: no
+  shell: make runtest
+  args:
+    chdir: /home/{{ansible_ssh_user}}/caffe/
+
+- name: make pycaffe
+  sudo: no
+  shell: make pycaffe
+  args:
+    chdir: /home/{{ansible_ssh_user}}/caffe/
+
+- name: Add PYTHONPATH to bashrc
+  lineinfile:
+    dest: /home/{{ansible_ssh_user}}/.bashrc
+    line: export PYTHONPATH=/home/{{ansible_ssh_user}}/caffe/python/:$PYTHONPATH
